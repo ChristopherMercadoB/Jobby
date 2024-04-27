@@ -4,9 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Jobby.Core.Domain.Entities
+namespace Jobby.Core.Application.Enums
 {
-    public class Vacants
+    public enum Roles
     {
+        Enterprise,
+        User
     }
 }
