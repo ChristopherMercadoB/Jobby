@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <Folder Include="Features\Vacants\Queries\" />
-    <Folder Include="Helpers\" />
     <Folder Include="Interfaces\Services\" />
     <Folder Include="ViewModels\" />
     <Folder Include="Services\" />

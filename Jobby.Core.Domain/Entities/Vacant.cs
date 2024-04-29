@@ -8,5 +8,6 @@ namespace Jobby.Core.Domain.Entities
         public string EnterpriseId { get; set; }
         public string Name { get; set; }
         public string Description { get; set; }
+        public List<Postulation> Postulations { get; set; }
     }
 }

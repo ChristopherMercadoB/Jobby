@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Jobby.Core.Application.Enums
+﻿namespace Jobby.Core.Application.Enums
 {
     public enum Roles
     {
