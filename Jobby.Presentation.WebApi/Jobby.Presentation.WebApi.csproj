@@ -15,4 +15,8 @@
     <Folder Include="Controllers\v1\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Jobby.Infrastructure.Identity\Jobby.Infrastructure.Identity.csproj" />
+  </ItemGroup>
+
 </Project>

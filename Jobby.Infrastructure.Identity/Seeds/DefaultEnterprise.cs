@@ -6,7 +6,7 @@ namespace Jobby.Infrastructure.Identity.Seeds
 {
     public static class DefaultEnterprise
     {
-        public static async void SeedAsync(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager)
+        public static async Task SeedAsync(UserManager<ApplicationUser> userManager, RoleManager<IdentityRole> roleManager)
         {
             ApplicationUser defaultUser = new()
             {
@@ -18,12 +18,11 @@ namespace Jobby.Infrastructure.Identity.Seeds
                 PhoneNumberConfirmed = true
             };
 
-            if (userManager.Users.Any(e=> e.Id == defaultUser.Id))
+            if (userManager.Users.All(e=> e.Id == defaultUser.Id))
             {
                 if (userManager.FindByEmailAsync(defaultUser.Email) == null)
                 {
-                    await userManager.CreateAsync(defaultUser);
-                    await userManager.AddPasswordAsync(defaultUser, "Pa$$word123!");
+                    await userManager.CreateAsync(defaultUser, "Pa$$word123!");
                     await userManager.AddToRoleAsync(defaultUser, Roles.Enterprise.ToString());
                 }
             }
