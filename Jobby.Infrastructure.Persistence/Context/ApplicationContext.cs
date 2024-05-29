@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using Jobby.Core.Domain.Entities;
+using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -14,6 +15,9 @@ namespace Jobby.Infrastructure.Persistence.Context
         {
             
         }
+
+        public DbSet<Vacant> Vacants { get; set; }
+        public DbSet<Postulation> Postulations { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

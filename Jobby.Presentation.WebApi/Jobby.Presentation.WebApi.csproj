@@ -7,7 +7,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Versioning" Version="5.1.0" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="7.0.13" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="7.0.19">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
   </ItemGroup>
 
@@ -16,7 +21,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Jobby.Core.Application\Jobby.Core.Application.csproj" />
+    <ProjectReference Include="..\Jobby.Core.Domain\Jobby.Core.Domain.csproj" />
     <ProjectReference Include="..\Jobby.Infrastructure.Identity\Jobby.Infrastructure.Identity.csproj" />
+    <ProjectReference Include="..\Jobby.Infrastructure.Persistence\Jobby.Infrastructure.Persistence.csproj" />
+    <ProjectReference Include="..\Jobby.Infrastructure.Shared\Jobby.Infrastructure.Shared.csproj" />
   </ItemGroup>
 
 </Project>

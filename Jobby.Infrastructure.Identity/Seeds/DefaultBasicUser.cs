@@ -13,14 +13,15 @@ namespace Jobby.Infrastructure.Identity.Seeds
                 FirstName = "Christopher",
                 LastName = "Mercado",
                 UserName = "Chris",
-                Email = "cm@email.com",
+                Email = "basicuser@email.com",
                 EmailConfirmed = true,
                 PhoneNumberConfirmed = true
             };
 
-            if (userManager.Users.All(e=> e.Id == defaultUser.Id))
+            if (userManager.Users.All(e=> e.Id != defaultUser.Id))
             {
-                if (userManager.FindByEmailAsync(defaultUser.Email) == null)
+                var result = await userManager.FindByEmailAsync(defaultUser.Email);
+                if (result == null)
                 {
                     await userManager.CreateAsync(defaultUser, "Pa$$word123!");
                     await userManager.AddToRoleAsync(defaultUser, Roles.Enterprise.ToString());

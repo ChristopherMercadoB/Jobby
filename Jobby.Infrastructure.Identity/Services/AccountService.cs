@@ -1,22 +1,16 @@
 ﻿using Jobby.Core.Application.DTOS.Account;
 using Jobby.Core.Application.Enums;
-using Jobby.Core.Application.Helpers;
 using Jobby.Core.Application.Interfaces.Services;
 using Jobby.Core.Application.Wrappers;
 using Jobby.Core.Domain.Settings;
 using Jobby.Infrastructure.Identity.Entities;
 using Microsoft.AspNetCore.Identity;
-using Microsoft.CodeAnalysis.Options;
+using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using System;
-using System.Collections.Generic;
 using System.IdentityModel.Tokens.Jwt;
-using System.Linq;
-using System.Net;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace Jobby.Infrastructure.Identity.Services
 {
@@ -26,45 +20,45 @@ namespace Jobby.Infrastructure.Identity.Services
         private readonly SignInManager<ApplicationUser> _signInManager;
         private readonly JWTSetting _jwtSetting;
 
-        public AccountService(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, Option<JWTSetting> jwtSetting)
+        public AccountService(UserManager<ApplicationUser> userManager, SignInManager<ApplicationUser> signInManager, IOptions<JWTSetting> jwtSetting)
         {
             _userManager = userManager;
             _signInManager = signInManager;
-            _jwtSetting = jwtSetting.DefaultValue;
+            _jwtSetting = jwtSetting.Value;
         }
 
-        public async Task<Response<AuthenticationResponse>> AuthenticateAsyncApi(AuthenticationRequest request, string ipAddress)
+        public async Task<Response<AuthenticationResponse>> AuthenticateApiAsync(AuthenticationRequest request)
         {
+
             var user = await _userManager.FindByEmailAsync(request.Email);
-            if (user == null)
+            if (user is null)
             {
-                return new Response<AuthenticationResponse>("No se han encontrado usuario con el email: " + request.Email);
+                return new Response<AuthenticationResponse>("No hay usuarios con el email");
             }
 
-            var result = await _signInManager.PasswordSignInAsync(request.Email, request.Password, false, lockoutOnFailure: false);
+            var result = await _signInManager.PasswordSignInAsync(user.UserName, request.Password, false, lockoutOnFailure: false);
             if (!result.Succeeded)
             {
-                return new Response<AuthenticationResponse>("Hubo un error al intentar iniciar sesion");
+                return new Response<AuthenticationResponse>("Hubo un problema de login");
+
             }
 
-            JwtSecurityToken jwtSecurityToken = await GenerateSecurityTokenAsync(user);
+            var listRole = await _userManager.GetRolesAsync(user).ConfigureAwait(false);
             AuthenticationResponse response = new();
-            response.Id = user.Id;
-            response.JWToken = new JwtSecurityTokenHandler().WriteToken(jwtSecurityToken);
-            response.Email = user.Email;
+            response.IsVerified = true;
+            response.Email = request.Email;
             response.UserName = user.UserName;
+            response.Roles = listRole.ToList();
 
-            var roleList = await _userManager.GetRolesAsync(user).ConfigureAwait(false);
-            response.Roles = roleList.ToList();
-            response.IsVerified = user.EmailConfirmed;
-
-            var refreshToken = GenerateRefreshToken(ipAddress);
+            var jwtSecurityToken = await GenerateJWToken(user);
+            response.JWToken = new JwtSecurityTokenHandler().WriteToken(jwtSecurityToken);
+            var refreshToken = GenerateRefreshToken();
             response.RefreshToken = refreshToken.Token;
-            return new Response<AuthenticationResponse>(response, "Autenticado");
 
+            return new Response<AuthenticationResponse>(response);
         }
 
-        public async Task<Response<string>> RegisterAsyncApi(RegisterRequest request, string origin)
+        public async Task<Response<string>> RegisterAsyncApi(RegisterRequest request)
         {
             var userWithSameUserName = await _userManager.FindByNameAsync(request.UserName);
             if (userWithSameUserName != null)
@@ -97,51 +91,49 @@ namespace Jobby.Infrastructure.Identity.Services
 
         }
 
-        private async Task<JwtSecurityToken> GenerateSecurityTokenAsync(ApplicationUser user)
+        private async Task<JwtSecurityToken> GenerateJWToken(ApplicationUser user)
         {
             var userClaims = await _userManager.GetClaimsAsync(user);
             var roles = await _userManager.GetRolesAsync(user);
+
             var roleClaims = new List<Claim>();
+
             foreach (var role in roles)
             {
                 roleClaims.Add(new Claim("roles", role));
             }
 
-            string ipAddress = IpHelper.GetIp();
+
             var claims = new[]
             {
-                new Claim(JwtRegisteredClaimNames.Sub, user.UserName),
-                new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
-                new Claim(JwtRegisteredClaimNames.Email, user.Email),
-                new Claim("uid", user.Id),
-                new Claim("ip", ipAddress)
-
-            }.Union(userClaims)
+                new Claim(JwtRegisteredClaimNames.Sub,user.UserName),
+                new Claim(JwtRegisteredClaimNames.Jti,Guid.NewGuid().ToString()),
+                new Claim(JwtRegisteredClaimNames.Email,user.Email),
+                new Claim("uid",user.Id)
+            }
+            .Union(userClaims)
             .Union(roleClaims);
 
-            var symetricSecurityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSetting.Key));
-            var signingCredentials = new SigningCredentials(symetricSecurityKey, SecurityAlgorithms.HmacSha256);
+            var symmectricSecurityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_jwtSetting.Key));
+            var signingCredetials = new SigningCredentials(symmectricSecurityKey, SecurityAlgorithms.HmacSha256);
+
             var jwtSecurityToken = new JwtSecurityToken(
                 issuer: _jwtSetting.Issuer,
                 audience: _jwtSetting.Audience,
                 claims: claims,
-                expires: DateTime.Now.AddMinutes(_jwtSetting.DurationInMinutes),
-                signingCredentials: signingCredentials
-                );
+                expires: DateTime.UtcNow.AddMinutes(_jwtSetting.DurationInMinutes),
+                signingCredentials: signingCredetials);
 
             return jwtSecurityToken;
         }
 
-        private RefreshToken GenerateRefreshToken(string IpAddress)
+        private RefreshToken GenerateRefreshToken()
         {
-            return new RefreshToken()
+            return new RefreshToken
             {
                 Token = RandomTokenString(),
-                Expires = DateTime.Now.AddDays(7),
-                Created = DateTime.Now,
-                CreatedByIp = IpAddress
-
-                
+                Expires = DateTime.UtcNow.AddDays(7),
+                Created = DateTime.UtcNow
             };
         }
 

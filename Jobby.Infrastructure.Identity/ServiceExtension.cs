@@ -1,7 +1,9 @@
-﻿using Jobby.Core.Application.Wrappers;
+﻿using Jobby.Core.Application.Interfaces.Services;
+using Jobby.Core.Application.Wrappers;
 using Jobby.Core.Domain.Settings;
 using Jobby.Infrastructure.Identity.Context;
 using Jobby.Infrastructure.Identity.Entities;
+using Jobby.Infrastructure.Identity.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -11,10 +13,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Newtonsoft.Json;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace Jobby.Infrastructure.Identity
 {
@@ -22,21 +21,28 @@ namespace Jobby.Infrastructure.Identity
     {
         public static void AddInfrastructureIdentity(this IServiceCollection services, IConfiguration configuration)
         {
-            services.AddDbContext<IdentityContext>(op => op.UseSqlServer(configuration.GetConnectionString("IdentityConnction"), m=>m.MigrationsAssembly(typeof(IdentityContext).Assembly.FullName)));
+            services.AddDbContext<IdentityContext>(op =>
+                op.UseSqlServer(configuration.GetConnectionString("IdentityConnection"),
+                    m => m.MigrationsAssembly(typeof(IdentityContext).Assembly.FullName)));
 
-            services.AddIdentity<ApplicationUser, IdentityRole>().AddEntityFrameworkStores<IdentityContext>().AddDefaultTokenProviders();
+            services.AddIdentity<ApplicationUser, IdentityRole>()
+                .AddEntityFrameworkStores<IdentityContext>()
+                .AddDefaultTokenProviders();
 
             services.Configure<JWTSetting>(configuration.GetSection("JWTSetting"));
 
-            services.AddAuthentication(option =>
+            services.AddTransient<IAccountService, AccountService>();
+
+            services.AddAuthentication(options =>
             {
-                option.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
-                option.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-            }).AddJwtBearer(o =>
+                options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+                options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+            })
+            .AddJwtBearer(options =>
             {
-                o.RequireHttpsMetadata = false;
-                o.SaveToken = false;
-                o.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters()
+                options.RequireHttpsMetadata = false;
+                options.SaveToken = false;
+                options.TokenValidationParameters = new TokenValidationParameters
                 {
                     ValidateIssuer = true,
                     ValidateAudience = true,
@@ -48,36 +54,34 @@ namespace Jobby.Infrastructure.Identity
                     IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(configuration["JWTSetting:Key"]))
                 };
 
-                o.Events = new JwtBearerEvents()
+                options.Events = new JwtBearerEvents
                 {
-                    OnAuthenticationFailed = c =>
+                    OnAuthenticationFailed = context =>
                     {
-                        c.NoResult();
-                        c.Response.StatusCode = 500;
-                        c.Response.ContentType = "text/plain";
-                        return c.Response.WriteAsync(c.Exception.ToString());
+                        context.NoResult();
+                        context.Response.StatusCode = 500;
+                        context.Response.ContentType = "text/plain";
+                        return context.Response.WriteAsync(context.Exception.ToString());
                     },
-
-                    OnChallenge = c =>
+                    OnChallenge = context =>
                     {
-                        c.HandleResponse();
-                        c.Response.StatusCode = 401;
-                        c.Response.ContentType = "application/json";
-                        var result = JsonConvert.SerializeObject(new Response<string>("No estas autorizado"));
-                        return c.Response.WriteAsync(result);
+                        context.HandleResponse();
+                        context.Response.StatusCode = 401;
+                        context.Response.ContentType = "application/json";
+                        var result = JsonConvert.SerializeObject(new Response<string>("No estás autorizado"));
+                        return context.Response.WriteAsync(result);
                     },
-
-                    OnForbidden = c =>
+                    OnForbidden = context =>
                     {
-                        c.Response.StatusCode = 400;
-                        c.Response.ContentType = "application/json";
+                        context.Response.StatusCode = 403;
+                        context.Response.ContentType = "application/json";
                         var result = JsonConvert.SerializeObject(new Response<string>("No tienes acceso a este recurso"));
-                        return c.Response.WriteAsync(result);
+                        return context.Response.WriteAsync(result);
                     }
                 };
-                
-                
             });
+
+            services.AddAuthorization();
         }
     }
 }
